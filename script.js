@@ -1,5 +1,3 @@
-console.log('hello')
-
 ymaps.ready(init);
 
 function init(){
