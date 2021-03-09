@@ -1,12 +1,9 @@
 async function getPlaces(address) {
-  console.log({address})
   const response = await fetch(
     `https://nominatim.openstreetmap.org/search?q=${address}&format=json&polygon_geojson=1&addressdetails=2`,
   );
   return await response.json();
 }
-
-
 
 ymaps.ready(init);
 
@@ -30,8 +27,8 @@ function init(){
             myMap.geoObjects.remove(polygon);
           })
           myMap.geoObjects.add(polygon);
-          geoTitleBallon.open(event.get('coords'), places[placeIndex].display_name.split(', ').slice(0,2).join(', '))
         }
+
         if(placeIndex !== -1 && places[placeIndex].geojson.type === 'MultiPolygon') {
           places[placeIndex].geojson.coordinates.forEach(coords => {
             let p = new ymaps.Polygon(coords, {interactivityModel: 'default#transparent'});
@@ -40,9 +37,13 @@ function init(){
               myMap.geoObjects.remove(p)
             });
             myMap.geoObjects.add(p)
-            geoTitleBallon.open(event.get('coords'), places[placeIndex].display_name.split(', ').slice(0,2).join(', '))
           })
         }
+
+        if (event) {
+          geoTitleBallon.open(event.get('coords'), places[placeIndex].display_name.split(', ').slice(0,2).join(', '))
+        }
+
       })
       .catch(err => {
         console.err(err);
@@ -87,6 +88,17 @@ function init(){
       .catch(err => {
         console.err(err)
       })
+  })
+
+  const searchControl = myMap.controls.get('searchControl');
+  searchControl.events.add('resultshow', e => {
+    geoTitleBallon.close();
+    myMap.geoObjects.removeAll();
+    const data = searchControl.getResponseMetaData();
+    if (data) {
+      const params = data.request;
+      workWithGeoCode(params)
+    }
   })
   
 }
