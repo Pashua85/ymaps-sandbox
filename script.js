@@ -18,6 +18,8 @@ function init(){
   geoTitleBallon.options.setParent(myMap.options);
 
   function workWithGeoCode(params, event) {
+    // в некоторых случаях (напрмер для некоторых городских районов(напр. во Владивостоке или Владикавказе)) с OSM не приходят координаты
+    // для таких случаев нужно сделать бэкап - выделать границы родительского геообъекта(города)
     getPlaces(params)
       .then(places => {
         const placeIndex = places.findIndex(item => item.geojson.type === 'Polygon' || item.geojson.type === 'MultiPolygon');
@@ -64,7 +66,9 @@ function init(){
       json: true
     })
       .then(res => {
-        console.log({res})
+        console.log({districtResponse: res});
+        // нужно отдельно доработать выделение районов Москвы (там в featureMember может приходить [микрорайон, РАЙОН, округ] или [РАЙОН, округ])
+        // в остальных городах район приходит последним элементом
         if (myMap._zoom >= 11 && res.GeoObjectCollection.featureMember.length) {
           const geoObject = res.GeoObjectCollection.featureMember[res.GeoObjectCollection.featureMember.length - 1].GeoObject;
           const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted;
@@ -75,7 +79,15 @@ function init(){
             json: true
           })
             .then(response => {
-              const addressLength = myMap._zoom < 8 ? 2 : 3;
+              let addressLength;
+              if (myMap._zoom < 8) {
+                addressLength = 2;
+              } else if (myMap._zoom < 11) {
+                addressLength = 3;
+              }
+              // при зуме до 8 выделяются субъекты, или их центры
+              // при зуме от 8 до 10 в регионах выделяются районы или городсие округа (или их центры), от 11 - населенные пункты поменьше (ближайшие к клику)
+              
               if (response.GeoObjectCollection.featureMember.length) {
                 const geoObject = response.GeoObjectCollection.featureMember[0].GeoObject;
                 const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted.split(', ').slice(0, addressLength).join('+');
