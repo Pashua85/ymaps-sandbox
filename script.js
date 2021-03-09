@@ -1,4 +1,5 @@
 async function getPlaces(address) {
+  console.log({address})
   const response = await fetch(
     `https://nominatim.openstreetmap.org/search?q=${address}&format=json&polygon_geojson=1&addressdetails=2`,
   );
@@ -40,13 +41,13 @@ function init(){
           })
         }
 
-        if (event) {
+        if (event && places[placeIndex]) {
           geoTitleBallon.open(event.get('coords'), places[placeIndex].display_name.split(', ').slice(0,2).join(', '))
         }
 
       })
       .catch(err => {
-        console.err(err);
+        console.error(err);
       })
   }
 
@@ -63,6 +64,7 @@ function init(){
       json: true
     })
       .then(res => {
+        console.log({res})
         if (myMap._zoom >= 11 && res.GeoObjectCollection.featureMember.length) {
           const geoObject = res.GeoObjectCollection.featureMember[res.GeoObjectCollection.featureMember.length - 1].GeoObject;
           const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted;
@@ -86,7 +88,7 @@ function init(){
         }
       })
       .catch(err => {
-        console.err(err)
+        console.error(err)
       })
   })
 
