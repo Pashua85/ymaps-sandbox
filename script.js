@@ -19,7 +19,7 @@ function init(){
 
   function workWithGeoCode(params, event) {
     // в некоторых случаях (например для некоторых городских районов(напр. во Владивостоке или Владикавказе)) с OSM не приходят координаты
-    // для таких случаев нужно сделать бэкап - выделать границы родительского геообъекта(города)
+    // для таких случаев нужно сделать бэкап - выделять границы родительского геообъекта(города)
     getPlaces(params)
       .then(places => {
         const placeIndex = places.findIndex(item => item.geojson.type === 'Polygon' || item.geojson.type === 'MultiPolygon');
