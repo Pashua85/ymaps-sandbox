@@ -24,7 +24,13 @@ function init(){
       .then(places => {
         const placeIndex = places.findIndex(item => item.geojson.type === 'Polygon' || item.geojson.type === 'MultiPolygon');
         if (placeIndex !== -1 && places[placeIndex].geojson.type === 'Polygon') {
-          polygon = new ymaps.Polygon(places[placeIndex].geojson.coordinates, {interactivityModel: 'default#transparent'});
+          polygon = new ymaps.Polygon(places[placeIndex].geojson.coordinates,
+            {interactivityModel: 'default#transparent'},
+            {
+              fillOpacity: 0.3,
+              fillColor: "#54cbba"
+            }
+          );
           polygon.events.add('click', event => {
             geoTitleBallon.close();
             myMap.geoObjects.remove(polygon);
@@ -34,7 +40,13 @@ function init(){
 
         if(placeIndex !== -1 && places[placeIndex].geojson.type === 'MultiPolygon') {
           places[placeIndex].geojson.coordinates.forEach(coords => {
-            let p = new ymaps.Polygon(coords, {interactivityModel: 'default#transparent'});
+            let p = new ymaps.Polygon(coords,
+              {interactivityModel: 'default#transparent'},
+              {
+                fillOpacity: 0.3,
+                fillColor: "#54cbba"
+              }
+            );
             p.events.add('click', event => {
               geoTitleBallon.close();
               myMap.geoObjects.remove(p)
@@ -61,12 +73,13 @@ function init(){
     geoTitleBallon.close();
     myMap.geoObjects.removeAll();
 
+
     ymaps.geocode(event.get('coords'), {
       kind: 'district',
       json: true
     })
       .then(res => {
-        console.log({districtResponse: res});
+        console.log({districtResponseFromYGeocode: res});
         // нужно отдельно доработать выделение районов Москвы (там в featureMember может приходить [микрорайон, РАЙОН, округ] или [РАЙОН, округ])
         // в остальных городах район приходит последним элементом
         if (myMap._zoom >= 11 && res.GeoObjectCollection.featureMember.length) {
@@ -79,6 +92,7 @@ function init(){
             json: true
           })
             .then(response => {
+              console.log({localResponseFormYGoecode: response})
               let addressLength;
               if (myMap._zoom < 8) {
                 addressLength = 2;
