@@ -6,6 +6,7 @@ async function getPlaces(address) {
   return await response.json();
 }
 
+
 ymaps.ready(init);
 
 function init(){
@@ -22,9 +23,10 @@ function init(){
     // для таких случаев нужно сделать бэкап - выделять границы родительского геообъекта(города)
     getPlaces(params)
       .then(places => {
+        console.log({placesFromWorkWithGeocode: places})
         const placeIndex = places.findIndex(item => item.geojson.type === 'Polygon' || item.geojson.type === 'MultiPolygon');
         if (placeIndex !== -1 && places[placeIndex].geojson.type === 'Polygon') {
-          polygon = new ymaps.Polygon(places[placeIndex].geojson.coordinates,
+          const polygon = new ymaps.Polygon(places[placeIndex].geojson.coordinates,
             {interactivityModel: 'default#transparent'},
             {
               fillOpacity: 0.3,
@@ -63,59 +65,76 @@ function init(){
       .catch(err => {
         console.error(err);
       })
-  }
+  }  
 
-  
-
-  let polygon;
   myMap.events.add('click', event => {
     console.log({zoom: myMap._zoom})
     geoTitleBallon.close();
     myMap.geoObjects.removeAll();
 
+    if (myMap._zoom > 15) {
+      ymaps.geocode(event.get('coords'), {
+        kind: 'house',
+        json: true
+      })
+        .then(res => {
+          if (res.GeoObjectCollection.featureMember.length) {
+            const geoObject = res.GeoObjectCollection.featureMember[0].GeoObject;
+            const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted;
+            workWithGeoCode(params, event)
+          }
+        })
+        .catch(err => {
+          console.error(err)
+        })
+    } else {
+      ymaps.geocode(event.get('coords'), {
+        kind: 'district',
+        json: true
+      })
+        .then(res => {
+          console.log({districtResponseFromYGeocode: res});
+          // нужно отдельно доработать выделение районов Москвы (там в featureMember может приходить [микрорайон, РАЙОН, округ] или [РАЙОН, округ])
+          // в остальных городах район приходит последним элементом
+          if (myMap._zoom >= 11 && res.GeoObjectCollection.featureMember.length) {
+            const geoObject = res.GeoObjectCollection.featureMember[res.GeoObjectCollection.featureMember.length - 1].GeoObject;
+            const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted;
+            workWithGeoCode(params, event);
+          } else  {
+            ymaps.geocode(event.get('coords'), {
+              kind: 'locality',
+              json: true
+            })
+              .then(response => {
+                console.log({localResponseFormYGoecode: response})
+                let addressLength;
+                if (myMap._zoom < 8) {
+                  addressLength = 2;
+                } else if (myMap._zoom < 11) {
+                  addressLength = 3;
+                }
+                // при зуме до 8 выделяются субъекты, или их центры
+                // при зуме от 8 до 10 в регионах выделяются районы или городсие округа (или их центры), от 11 - населенные пункты поменьше (ближайшие к клику)
+                
+                if (response.GeoObjectCollection.featureMember.length) {
+                  const geoObject = response.GeoObjectCollection.featureMember[0].GeoObject;
+                  const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted.split(', ').slice(0, addressLength).join('+');
+                  workWithGeoCode(params, event)
+                }
+              })
+              .catch(err => {
+                console.error(err);
+              })
+          }
+        })
+        .catch(err => {
+          console.error(err)
+        })
+    }
 
-    ymaps.geocode(event.get('coords'), {
-      kind: 'district',
-      json: true
-    })
-      .then(res => {
-        console.log({districtResponseFromYGeocode: res});
-        // нужно отдельно доработать выделение районов Москвы (там в featureMember может приходить [микрорайон, РАЙОН, округ] или [РАЙОН, округ])
-        // в остальных городах район приходит последним элементом
-        if (myMap._zoom >= 11 && res.GeoObjectCollection.featureMember.length) {
-          const geoObject = res.GeoObjectCollection.featureMember[res.GeoObjectCollection.featureMember.length - 1].GeoObject;
-          const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted;
-          workWithGeoCode(params, event);
-        } else  {
-          ymaps.geocode(event.get('coords'), {
-            kind: 'locality',
-            json: true
-          })
-            .then(response => {
-              console.log({localResponseFormYGoecode: response})
-              let addressLength;
-              if (myMap._zoom < 8) {
-                addressLength = 2;
-              } else if (myMap._zoom < 11) {
-                addressLength = 3;
-              }
-              // при зуме до 8 выделяются субъекты, или их центры
-              // при зуме от 8 до 10 в регионах выделяются районы или городсие округа (или их центры), от 11 - населенные пункты поменьше (ближайшие к клику)
-              
-              if (response.GeoObjectCollection.featureMember.length) {
-                const geoObject = response.GeoObjectCollection.featureMember[0].GeoObject;
-                const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted.split(', ').slice(0, addressLength).join('+');
-                workWithGeoCode(params, event)
-              }
-            })
-            .catch(err => {
-              console.error(err);
-            })
-        }
-      })
-      .catch(err => {
-        console.error(err)
-      })
+
+
+    
   })
 
   const searchControl = myMap.controls.get('searchControl');
