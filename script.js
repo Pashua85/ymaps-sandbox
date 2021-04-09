@@ -6,6 +6,9 @@ function formatAddress (address) {
     if (item.includes('деревня')) {
       return item.replace('деревня ', '')
     }
+    if (item.includes('сельское поселение') && item.includes('сельсовет')) {
+      return item.replace('сельское поселение ', '')
+    }
 
     return item;
   }).join('+')
@@ -40,6 +43,7 @@ function init(){
       .then(places => {
         console.log({placesFromWorkWithGeocode: places})
         const placeIndex = places.findIndex(item => item.geojson.type === 'Polygon' || item.geojson.type === 'MultiPolygon');
+        const pointPlaceIndex = places.findIndex(item => item.geojson.type === 'Point');
         if (placeIndex !== -1 && places[placeIndex].geojson.type === 'Polygon') {
           const polygon = new ymaps.Polygon(places[placeIndex].geojson.coordinates,
             {interactivityModel: 'default#transparent'},
@@ -56,7 +60,6 @@ function init(){
         }
 
         if(placeIndex !== -1 && places[placeIndex].geojson.type === 'MultiPolygon') {
-          console.log('from here')
           places[placeIndex].geojson.coordinates.forEach(coords => {
             let p = new ymaps.Polygon(coords,
               {interactivityModel: 'default#transparent'},
@@ -76,6 +79,10 @@ function init(){
         if (event && places[placeIndex]) {
           geoTitleBallon.open(event.get('coords'), places[placeIndex].display_name.split(', ').slice(0,2).join(', '))
         }
+
+        if(placeIndex === -1 && pointPlaceIndex !== -1 && event && places[pointPlaceIndex]) {
+          geoTitleBallon.open(event.get('coords'), places[pointPlaceIndex].display_name.split(', ').slice(0,2).join(', '))
+        } 
 
       })
       .catch(err => {
