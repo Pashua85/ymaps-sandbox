@@ -1,7 +1,22 @@
+function formatAddress (address) {
+  return address.split('+').map((item, i, arr) => {
+    if (item.includes('сельское поселение') && i !== arr.length - 1) {
+      return '';
+    }
+    if (item.includes('деревня')) {
+      return item.replace('деревня ', '')
+    }
+
+    return item;
+  }).join('+')
+}
+
 async function getPlaces(address) {
-  console.log({address})
+  const formatedAddress = formatAddress(address);
+
+  console.log({formatedAddress})
   const response = await fetch(
-    `https://nominatim.openstreetmap.org/search?q=${address}&format=json&polygon_geojson=1&addressdetails=2`,
+    `https://nominatim.openstreetmap.org/search?q=${formatedAddress}&format=json&polygon_geojson=1&addressdetails=2`,
   );
   return await response.json();
 }
@@ -41,6 +56,7 @@ function init(){
         }
 
         if(placeIndex !== -1 && places[placeIndex].geojson.type === 'MultiPolygon') {
+          console.log('from here')
           places[placeIndex].geojson.coordinates.forEach(coords => {
             let p = new ymaps.Polygon(coords,
               {interactivityModel: 'default#transparent'},
@@ -108,17 +124,32 @@ function init(){
               .then(response => {
                 console.log({localResponseFormYGoecode: response})
                 let addressLength;
-                if (myMap._zoom < 8) {
+                if (myMap._zoom > 8 && myMap._zoom < 10) {
                   addressLength = 2;
-                } else if (myMap._zoom < 11) {
+                }
+
+                if (myMap._zoom >= 10 && myMap._zoom <= 11) {
                   addressLength = 3;
                 }
+
+                if (myMap._zoom > 11) {
+                  addressLength = 4;
+                }
+
+                if (myMap._zoom > 13) {
+                  addressLength = 5;
+                }
+
+
+                 
                 // при зуме до 8 выделяются субъекты, или их центры
                 // при зуме от 8 до 10 в регионах выделяются районы или городсие округа (или их центры), от 11 - населенные пункты поменьше (ближайшие к клику)
                 
                 if (response.GeoObjectCollection.featureMember.length) {
                   const geoObject = response.GeoObjectCollection.featureMember[0].GeoObject;
+                  console.log({addressLength})
                   const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted.split(', ').slice(0, addressLength).join('+');
+                  console.log({params})
                   workWithGeoCode(params, event)
                 }
               })
