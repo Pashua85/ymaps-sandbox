@@ -131,7 +131,7 @@ function init(){
               .then(response => {
                 console.log({localResponseFormYGoecode: response})
                 let addressLength;
-                if (myMap._zoom > 8 && myMap._zoom < 10) {
+                if (myMap._zoom < 10) {
                   addressLength = 2;
                 }
 
