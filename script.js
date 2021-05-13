@@ -31,6 +31,14 @@ function formatAddress (address, detail) {
     if (detail === 'area') {
       return item.split(', ').filter(part => !part.includes('округ')).join(', ')
     }
+    if (item.includes('Балашиха')) {
+      return item.split(', ').map(part => {
+        if (part === 'Балашиха' ||part === 'Балашиха ') {
+          return 'городской округ Балашиха'
+        }
+        return part
+      }).join(', ')
+    }
 
     return item;
   }).join('+')
@@ -219,7 +227,7 @@ function init(){
     myMap.geoObjects.removeAll();
     const data = searchControl.getResponseMetaData();
     if (data) {
-      const params = data.request;
+      const params = data.request.split(', ').join('+');
       workWithGeoCode(params)
     }
   })
