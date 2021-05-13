@@ -1,4 +1,4 @@
-function formatAddress (address) {
+function formatAddress (address, detail) {
   return address.split('+').map((item, i, arr) => {
     if (item.includes('сельское поселение') && i !== arr.length - 1) {
       return '';
@@ -6,16 +6,37 @@ function formatAddress (address) {
     if (item.includes('деревня')) {
       return item.replace('деревня ', '')
     }
+    if (item.includes('хутор')) {
+      return item.replace('хутор ', '')
+    }
+    if (item.includes('поселок')) {
+      return item.replace('поселок ', '')
+    }
+    if (item.includes('посёлок')) {
+      return item.replace('посёлок ', '')
+    }
     if (item.includes('сельское поселение') && item.includes('сельсовет')) {
       return item.replace('сельское поселение ', '')
+    }
+    if (item.includes('посёлок городского типа')) {
+      return item.replace('посёлок городского типа ', '')
+    }
+    if (item.includes('поселок городского типа')) {
+      return item.replace('поселок городского типа ', '')
+    }
+    if (detail === 'district') {
+      return item.split(', ').filter(part => !part.includes('район')).join(', ')
+    }
+    if (detail === 'area') {
+      return item.split(', ').filter(part => !part.includes('округ')).join(', ')
     }
 
     return item;
   }).join('+')
 }
 
-async function getPlaces(address) {
-  const formatedAddress = formatAddress(address);
+async function getPlaces(address, detail) {
+  const formatedAddress = formatAddress(address, detail);
 
   console.log({formatedAddress})
   const response = await fetch(
@@ -36,10 +57,10 @@ function init(){
   const geoTitleBallon = new ymaps.Balloon(myMap);
   geoTitleBallon.options.setParent(myMap.options);
 
-  function workWithGeoCode(params, event) {
+  function workWithGeoCode(params, event, detail) {
     // в некоторых случаях (например для некоторых городских районов(напр. во Владивостоке или Владикавказе)) с OSM не приходят координаты
     // для таких случаев нужно сделать бэкап - выделять границы родительского геообъекта(города)
-    getPlaces(params)
+    getPlaces(params, detail)
       .then(places => {
         console.log({placesFromWorkWithGeocode: places})
         const placeIndex = places.findIndex(item => item.geojson.type === 'Polygon' || item.geojson.type === 'MultiPolygon');
@@ -120,9 +141,20 @@ function init(){
           // нужно отдельно доработать выделение районов Москвы (там в featureMember может приходить [микрорайон, РАЙОН, округ] или [РАЙОН, округ])
           // в остальных городах район приходит последним элементом
           if (myMap._zoom >= 11 && res.GeoObjectCollection.featureMember.length) {
-            const geoObject = res.GeoObjectCollection.featureMember[res.GeoObjectCollection.featureMember.length - 1].GeoObject;
-            const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted;
-            workWithGeoCode(params, event);
+            if (res.GeoObjectCollection.featureMember[0].GeoObject.description.includes('Москва')) {
+              const geoObject = res.GeoObjectCollection.featureMember[res.GeoObjectCollection.featureMember.length - 2].GeoObject;
+              const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted;
+              if (myMap._zoom <= 12) {
+                workWithGeoCode(params, event, 'district');
+              }
+              if (myMap._zoom > 12) {
+                workWithGeoCode(params, event, 'area');
+              }
+            } else {
+              const geoObject = res.GeoObjectCollection.featureMember[res.GeoObjectCollection.featureMember.length - 1].GeoObject;
+              const params = geoObject.metaDataProperty.GeocoderMetaData.Address.formatted;
+              workWithGeoCode(params, event);
+            }
           } else  {
             ymaps.geocode(event.get('coords'), {
               kind: 'locality',
