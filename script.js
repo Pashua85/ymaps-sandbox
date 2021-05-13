@@ -9,10 +9,11 @@ function formatAddress (address, detail) {
     if (item.includes('хутор')) {
       return item.replace('хутор ', '')
     }
-    if (item.includes('поселок')) {
+    if (item.includes('поселок' && !item.includes('поселок городского типа'))) {
       return item.replace('поселок ', '')
+      return item.split(', ').filter(part => !part.includes('поселок')).join(', ')
     }
-    if (item.includes('посёлок')) {
+    if (item.includes('посёлок') && !item.includes('посёлок городского типа')) {
       return item.replace('посёлок ', '')
     }
     if (item.includes('сельское поселение') && item.includes('сельсовет')) {
@@ -63,6 +64,11 @@ function init(){
     getPlaces(params, detail)
       .then(places => {
         console.log({placesFromWorkWithGeocode: places})
+        if (!places.length && params.split('+').length - 1) {
+          console.log('from if')
+          const paramsArray = params.split('+')
+          workWithGeoCode(paramsArray.slice(0, paramsArray.length - 1).join('+'), event, detail)
+        }
         const placeIndex = places.findIndex(item => item.geojson.type === 'Polygon' || item.geojson.type === 'MultiPolygon');
         const pointPlaceIndex = places.findIndex(item => item.geojson.type === 'Point');
         if (placeIndex !== -1 && places[placeIndex].geojson.type === 'Polygon') {
